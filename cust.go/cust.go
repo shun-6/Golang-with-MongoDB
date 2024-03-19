@@ -29,6 +29,8 @@ type Record struct {
 }
 
 func main() {
+	baslangic := time.Now()
+
 	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
 	if err != nil {
 		log.Fatal(err)
@@ -49,32 +51,57 @@ func main() {
 
 	reader := csv.NewReader(file)
 	reader.FieldsPerRecord = -1
-	lines, err := reader.ReadAll()
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	collection := client.Database("first-pars").Collection("first-chunk")
 
-	for _, line := range lines {
-		record := Record{}
-		record.Index, _ = strconv.Atoi(line[0])
-		record.CustomerID = line[1]
-		record.FirstName = line[2]
-		record.LastName = line[3]
-		record.Company = line[4]
-		record.City = line[5]
-		record.Country = line[6]
-		record.Phone1 = line[7]
-		record.Phone2 = line[8]
-		record.Email = line[9]
-		record.SubscriptionDate = line[10]
-		record.Website = line[11]
-		_, err := collection.InsertOne(ctx, record)
+	totalRecords := 0
+
+	chunk := 1000
+
+	for {
+
+		var records []interface{}
+
+		for i := 0; i < chunk; i++ {
+			line, err := reader.Read()
+			if err != nil {
+				break
+			}
+
+			record := Record{}
+			record.Index, _ = strconv.Atoi(line[0])
+			record.CustomerID = line[1]
+			record.FirstName = line[2]
+			record.LastName = line[3]
+			record.Company = line[4]
+			record.City = line[5]
+			record.Country = line[6]
+			record.Phone1 = line[7]
+			record.Phone2 = line[8]
+			record.Email = line[9]
+			record.SubscriptionDate = line[10]
+			record.Website = line[11]
+
+			records = append(records, record)
+		}
+
+		if len(records) == 0 {
+			break
+		}
+
+		_, err = collection.InsertMany(ctx, records)
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		totalRecords += len(records)
+
+		fmt.Printf("%d İşlem Tamamlandı.\n", totalRecords)
 	}
 
+	bitis := time.Now()
+
 	fmt.Println("CSV dosyanız MongoDB üzerine aktarılmıştır.")
+	fmt.Println("Başlangıç:", baslangic)
+	fmt.Println("Bitiş:", bitis)
 }
